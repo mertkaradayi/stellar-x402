@@ -1,0 +1,40 @@
+{
+  "name": "x402-stellar-fetch",
+  "version": "0.1.0",
+  "description": "Fetch wrapper that automatically handles x402 payments for Stellar",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "x402-stellar": "workspace:*",
+    "x402-stellar-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^12.0.0",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "@stellar/stellar-sdk": "^12.0.0"
+  }
+}
+

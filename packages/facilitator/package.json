@@ -1,0 +1,38 @@
+{
+  "name": "facilitator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "check-balance": "tsx src/scripts/check-balance.ts",
+    "test-redis": "tsx src/scripts/verify-redis-env.ts",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "test:live": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathPatterns=live-stellar --verbose",
+    "test:unit": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathIgnorePatterns=live-stellar"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^13.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.0",
+    "redis": "^4.7.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.3.3"
+  }
+}
