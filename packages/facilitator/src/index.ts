@@ -10,6 +10,11 @@ import express from "express";
 import cors from "cors";
 import { verifyRoute } from "./routes/verify.js";
 import { settleRoute } from "./routes/settle.js";
+import {
+  listDiscoveryResourcesRoute,
+  registerDiscoveryResourceRoute,
+  unregisterDiscoveryResourceRoute,
+} from "./routes/discovery.js";
 import { SUPPORTED_KINDS } from "./types/index.js";
 import { connectRedis, disconnectRedis, testRedisConnection } from "./storage/redis.js";
 
@@ -45,6 +50,11 @@ app.get("/supported", (_req, res) => {
 app.post("/verify", verifyRoute);
 app.post("/settle", settleRoute);
 
+// Discovery API endpoints (per x402 spec section 8)
+app.get("/discovery/resources", listDiscoveryResourcesRoute);
+app.post("/discovery/resources", registerDiscoveryResourceRoute);
+app.delete("/discovery/resources", unregisterDiscoveryResourceRoute);
+
 // Initialize Redis connection on startup
 async function startServer() {
   // Connect to Redis
@@ -56,9 +66,12 @@ async function startServer() {
   // Start Express server
   app.listen(PORT, () => {
     console.log(`🚀 x402 Stellar Facilitator running on http://localhost:${PORT}`);
-    console.log(`   GET  /supported - List supported schemes/networks`);
-    console.log(`   POST /verify    - Verify payment`);
-    console.log(`   POST /settle    - Settle payment`);
+    console.log(`   GET  /supported            - List supported schemes/networks`);
+    console.log(`   POST /verify               - Verify payment`);
+    console.log(`   POST /settle               - Settle payment`);
+    console.log(`   GET  /discovery/resources  - List discoverable resources`);
+    console.log(`   POST /discovery/resources  - Register a resource`);
+    console.log(`   DEL  /discovery/resources  - Unregister a resource`);
   });
 }
 

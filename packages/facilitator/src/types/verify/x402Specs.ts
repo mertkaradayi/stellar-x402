@@ -182,6 +182,58 @@ export const x402ResponseSchema = z.object({
   payer: z.string().optional(),
 });
 
+// ============================================================================
+// Discovery API Schemas (per x402 spec section 8)
+// ============================================================================
+
+/**
+ * A discovered resource in the x402 ecosystem
+ */
+export const DiscoveredResourceSchema = z.object({
+  /** The resource URL being monetized */
+  resource: z.string().url(),
+  /** Resource type (currently only "http") */
+  type: z.enum(["http"]),
+  /** x402 protocol version */
+  x402Version: z.number().refine((val) => x402Versions.includes(val as 1)),
+  /** Payment requirements for this resource */
+  accepts: z.array(PaymentRequirementsSchema),
+  /** Unix timestamp of when the resource was last updated */
+  lastUpdated: z.number().int().positive(),
+  /** Additional metadata about the resource */
+  metadata: z.record(z.any()).optional(),
+});
+
+/**
+ * Request parameters for listing discovery resources
+ */
+export const ListDiscoveryResourcesRequestSchema = z.object({
+  /** Filter by resource type */
+  type: z.string().optional(),
+  /** Maximum number of results to return (1-100) */
+  limit: z.number().int().min(1).max(100).optional(),
+  /** Number of results to skip for pagination */
+  offset: z.number().int().min(0).optional(),
+});
+
+/**
+ * Pagination info for discovery responses
+ */
+export const DiscoveryPaginationSchema = z.object({
+  limit: z.number().int(),
+  offset: z.number().int(),
+  total: z.number().int(),
+});
+
+/**
+ * Response from the discovery resources endpoint
+ */
+export const ListDiscoveryResourcesResponseSchema = z.object({
+  x402Version: z.number().refine((val) => x402Versions.includes(val as 1)),
+  items: z.array(DiscoveredResourceSchema),
+  pagination: DiscoveryPaginationSchema,
+});
+
 // Export unused regex for potential external use
 export { StellarAddressRegex, StellarContractRegex, StellarAssetRegex, Base64EncodedRegex };
 

@@ -42,6 +42,16 @@ export interface RoutePattern {
 }
 
 /**
+ * Configuration for the paywall UI
+ */
+export interface PaywallConfig {
+  /** Application name to display */
+  appName?: string;
+  /** Application logo URL */
+  appLogo?: string;
+}
+
+/**
  * Configuration for the middleware
  */
 export interface PaymentMiddlewareConfig {
@@ -55,6 +65,8 @@ export interface PaymentMiddlewareConfig {
   network?: StellarNetwork;
   /** Default asset (default: "native") */
   asset?: string;
+  /** Paywall UI configuration (optional, enables browser-friendly paywall) */
+  paywall?: PaywallConfig;
 }
 
 /**

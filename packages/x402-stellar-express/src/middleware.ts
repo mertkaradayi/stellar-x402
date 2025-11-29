@@ -2,6 +2,7 @@
  * Express Payment Middleware
  *
  * Protects routes with x402 payments on Stellar.
+ * Settlement timing follows Coinbase x402 pattern: settle AFTER route handler succeeds.
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from "express";
@@ -15,6 +16,18 @@ import {
 } from "x402-stellar";
 import type { PaymentMiddlewareConfig, RoutesConfig } from "./types.js";
 import { compileRoutePatterns, findMatchingRoute, priceToStroops } from "./utils.js";
+import { getPaywallHtml } from "./paywall/index.js";
+
+/**
+ * Check if the request is from a web browser that accepts HTML
+ */
+function isBrowserRequest(req: Request): boolean {
+  const acceptHeader = req.get("Accept") || "";
+  const userAgent = req.get("User-Agent") || "";
+
+  // Must accept text/html and look like a browser
+  return acceptHeader.includes("text/html") && userAgent.includes("Mozilla");
+}
 
 /**
  * Create payment middleware for Express
@@ -50,6 +63,7 @@ export function paymentMiddleware(config: PaymentMiddlewareConfig): RequestHandl
     facilitator,
     network = "stellar-testnet",
     asset = "native",
+    paywall,
   } = config;
 
   // Validate payTo address
@@ -95,7 +109,18 @@ export function paymentMiddleware(config: PaymentMiddlewareConfig): RequestHandl
     const paymentHeader = req.get("X-PAYMENT");
 
     if (!paymentHeader) {
-      // Return 402 Payment Required
+      // For browser requests, serve the paywall HTML UI
+      if (isBrowserRequest(req)) {
+        const html = getPaywallHtml({
+          paymentRequirements,
+          currentUrl: req.originalUrl,
+          config: paywall,
+        });
+        res.status(402).type("html").send(html);
+        return;
+      }
+
+      // For API/programmatic requests, return JSON
       res.status(402).json({
         x402Version: 1,
         error: "Payment Required",
@@ -108,7 +133,7 @@ export function paymentMiddleware(config: PaymentMiddlewareConfig): RequestHandl
     let paymentPayload: PaymentPayload;
     try {
       paymentPayload = decodePaymentHeader<PaymentPayload>(paymentHeader);
-    } catch (error) {
+    } catch {
       res.status(402).json({
         x402Version: 1,
         error: "Invalid payment header",
@@ -131,50 +156,136 @@ export function paymentMiddleware(config: PaymentMiddlewareConfig): RequestHandl
         return;
       }
 
-      // Store payment info for later settlement
+      // Store payment info on request for downstream use
       (req as Request & { x402Payment?: { payload: PaymentPayload; requirements: PaymentRequirements } }).x402Payment = {
         payload: paymentPayload,
         requirements: paymentRequirements,
       };
 
-      // Continue to the protected route
-      // We'll settle after the response is sent
+      // ============================================================
+      // Response Buffering: Intercept response methods to delay sending
+      // until we've completed settlement. This ensures we only charge
+      // users for successful requests.
+      // ============================================================
+      const originalWriteHead = res.writeHead.bind(res);
+      const originalWrite = res.write.bind(res);
+      const originalEnd = res.end.bind(res);
 
-      // Hook into response finish event
-      res.on("finish", async () => {
-        // Only settle if response was successful (2xx)
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            const settleResult = await settle(paymentPayload, paymentRequirements);
+      type BufferedCall =
+        | ["writeHead", Parameters<typeof originalWriteHead>]
+        | ["write", Parameters<typeof originalWrite>]
+        | ["end", Parameters<typeof originalEnd>];
 
-            if (settleResult.success) {
-              // Add payment response header (already sent, but log for debugging)
-              console.log(`[x402] Payment settled: ${settleResult.transaction}`);
-            } else {
-              console.error(`[x402] Settlement failed: ${settleResult.errorReason}`);
-            }
-          } catch (error) {
-            console.error("[x402] Settlement error:", error);
+      let bufferedCalls: BufferedCall[] = [];
+      let settled = false;
+
+      res.writeHead = function (...args: Parameters<typeof originalWriteHead>) {
+        if (!settled) {
+          bufferedCalls.push(["writeHead", args]);
+          return res;
+        }
+        return originalWriteHead(...args);
+      } as typeof originalWriteHead;
+
+      res.write = function (...args: Parameters<typeof originalWrite>) {
+        if (!settled) {
+          bufferedCalls.push(["write", args]);
+          return true;
+        }
+        return originalWrite(...args);
+      } as typeof originalWrite;
+
+      res.end = function (...args: Parameters<typeof originalEnd>) {
+        if (!settled) {
+          bufferedCalls.push(["end", args]);
+          return res;
+        }
+        return originalEnd(...args);
+      } as typeof originalEnd;
+
+      // Helper to replay buffered calls
+      const replayBufferedCalls = () => {
+        for (const [method, args] of bufferedCalls) {
+          if (method === "writeHead") {
+            originalWriteHead(...(args as Parameters<typeof originalWriteHead>));
+          } else if (method === "write") {
+            originalWrite(...(args as Parameters<typeof originalWrite>));
+          } else if (method === "end") {
+            originalEnd(...(args as Parameters<typeof originalEnd>));
           }
         }
-      });
+        bufferedCalls = [];
+      };
 
-      // Set payment response header before passing to next handler
-      const settleResult = await settle(paymentPayload, paymentRequirements);
+      // Helper to restore original methods
+      const restoreResponseMethods = () => {
+        settled = true;
+        res.writeHead = originalWriteHead;
+        res.write = originalWrite;
+        res.end = originalEnd;
+      };
 
-      if (settleResult.success) {
-        res.set(
-          "X-PAYMENT-RESPONSE",
-          encodePaymentHeader({
-            success: true,
-            transaction: settleResult.transaction,
-            network: settleResult.network,
-            payer: settleResult.payer,
-          })
-        );
+      // ============================================================
+      // Execute route handler
+      // ============================================================
+      await next();
+
+      // ============================================================
+      // Post-route settlement logic
+      // ============================================================
+
+      // If the route returned an error (4xx/5xx), don't settle - just replay buffered response
+      if (res.statusCode >= 400) {
+        restoreResponseMethods();
+        replayBufferedCalls();
+        return;
       }
 
-      next();
+      // Route succeeded - now settle the payment
+      try {
+        const settleResult = await settle(paymentPayload, paymentRequirements);
+
+        if (settleResult.success) {
+          // Add X-PAYMENT-RESPONSE header with settlement details
+          res.set(
+            "X-PAYMENT-RESPONSE",
+            encodePaymentHeader({
+              success: true,
+              transaction: settleResult.transaction,
+              network: settleResult.network,
+              payer: settleResult.payer,
+            })
+          );
+          console.log(`[x402] Payment settled: ${settleResult.transaction}`);
+        } else {
+          // Settlement failed - return 402 error instead of the buffered response
+          console.error(`[x402] Settlement failed: ${settleResult.errorReason}`);
+          restoreResponseMethods();
+          bufferedCalls = []; // Discard buffered response
+          res.status(402).json({
+            x402Version: 1,
+            error: settleResult.errorReason || "Payment settlement failed",
+            accepts: [paymentRequirements],
+            payer: settleResult.payer,
+          });
+          return;
+        }
+      } catch (error) {
+        // Settlement error - return 402
+        console.error("[x402] Settlement error:", error);
+        restoreResponseMethods();
+        bufferedCalls = [];
+        res.status(402).json({
+          x402Version: 1,
+          error: "Payment settlement failed",
+          accepts: [paymentRequirements],
+        });
+        return;
+      }
+
+      // Settlement successful - restore methods and replay buffered response
+      restoreResponseMethods();
+      replayBufferedCalls();
     } catch (error) {
       console.error("[x402] Verification error:", error);
       res.status(500).json({
@@ -204,4 +315,3 @@ export function createPaymentMiddleware(
     facilitator,
   });
 }
-

@@ -2,17 +2,20 @@
  * Facilitator Types and Error Codes
  */
 
-import type { z } from "zod";
-import type {
-  PaymentRequirementsSchema,
-  StellarPayloadSchema,
-  PaymentPayloadSchema,
-  FacilitatorRequestSchema,
-  VerifyResponseSchema,
-  SettleResponseSchema,
-  SupportedPaymentKindSchema,
-  SupportedPaymentKindsResponseSchema,
-  x402ResponseSchema,
+// Re-export types from x402Specs for convenience
+export type {
+  PaymentRequirements,
+  StellarPayload,
+  PaymentPayload,
+  VerifyResponse,
+  SettleResponse,
+  SupportedPaymentKind,
+  SupportedPaymentKindsResponse,
+  x402Response,
+  DiscoveredResource,
+  ListDiscoveryResourcesRequest,
+  DiscoveryPagination,
+  ListDiscoveryResourcesResponse,
 } from "./x402Specs.js";
 
 // ============================================================================
@@ -52,20 +55,6 @@ export const StellarErrorReasons = [
 export type StellarErrorReason = (typeof StellarErrorReasons)[number];
 
 // ============================================================================
-// Inferred Types from Zod Schemas
-// ============================================================================
-
-export type PaymentRequirements = z.infer<typeof PaymentRequirementsSchema>;
-export type StellarPayload = z.infer<typeof StellarPayloadSchema>;
-export type PaymentPayload = z.infer<typeof PaymentPayloadSchema>;
-export type FacilitatorRequest = z.infer<typeof FacilitatorRequestSchema>;
-export type VerifyResponse = z.infer<typeof VerifyResponseSchema>;
-export type SettleResponse = z.infer<typeof SettleResponseSchema>;
-export type SupportedPaymentKind = z.infer<typeof SupportedPaymentKindSchema>;
-export type SupportedPaymentKindsResponse = z.infer<typeof SupportedPaymentKindsResponseSchema>;
-export type x402Response = z.infer<typeof x402ResponseSchema>;
-
-// ============================================================================
 // Facilitator Config
 // ============================================================================
 
@@ -75,6 +64,7 @@ export interface FacilitatorConfig {
     verify: Record<string, string>;
     settle: Record<string, string>;
     supported: Record<string, string>;
+    list?: Record<string, string>;
   }>;
 }
 
@@ -84,4 +74,3 @@ export interface FacilitatorConfig {
 
 export const SUPPORTED_NETWORKS = ["stellar-testnet", "stellar"] as const;
 export type SupportedNetwork = (typeof SUPPORTED_NETWORKS)[number];
-

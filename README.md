@@ -43,13 +43,15 @@ import { paymentMiddleware } from "x402-stellar-express";
 
 const app = express();
 
-app.use(paymentMiddleware(
-  "GXXXX...",  // Your Stellar address to receive payments
-  {
+app.use(paymentMiddleware({
+  payTo: "GXXXX...",  // Your Stellar address to receive payments
+  routes: {
     "/api/premium/*": { price: "1.00" }  // 1 XLM
   },
-  { url: "http://localhost:4022" }  // Facilitator URL
-));
+  facilitator: { url: "http://localhost:4022" },
+  // Optional: Enable browser-friendly paywall UI
+  paywall: { appName: "My API" },
+}));
 
 app.get("/api/premium/data", (req, res) => {
   res.json({ premium: "content" });

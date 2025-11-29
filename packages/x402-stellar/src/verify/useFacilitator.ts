@@ -13,6 +13,8 @@ import type {
   VerifyResponse,
   SettleResponse,
   SupportedPaymentKindsResponse,
+  ListDiscoveryResourcesRequest,
+  ListDiscoveryResourcesResponse,
 } from "../types/facilitator.js";
 
 const DEFAULT_FACILITATOR_URL = "https://facilitator.stellar-x402.org";
@@ -159,9 +161,64 @@ export function useFacilitator(facilitator?: FacilitatorConfig) {
     return data as SupportedPaymentKindsResponse;
   }
 
-  return { verify, settle, supported };
+  /**
+   * Lists discovery resources from the facilitator service
+   *
+   * @param config - Optional parameters for filtering and pagination
+   * @returns A promise that resolves to the discovery list response
+   *
+   * @example
+   * ```typescript
+   * // List all resources
+   * const resources = await list();
+   *
+   * // List with pagination
+   * const resources = await list({ limit: 10, offset: 0 });
+   *
+   * // Filter by type
+   * const resources = await list({ type: "http" });
+   * ```
+   */
+  async function list(
+    config: ListDiscoveryResourcesRequest = {}
+  ): Promise<ListDiscoveryResourcesResponse> {
+    const url = facilitator?.url || DEFAULT_FACILITATOR_URL;
+
+    let headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (facilitator?.createAuthHeaders) {
+      const authHeaders = await facilitator.createAuthHeaders();
+      if (authHeaders.list) {
+        headers = { ...headers, ...authHeaders.list };
+      }
+    }
+
+    // Build query parameters, excluding undefined values
+    const params = new URLSearchParams();
+    if (config.type !== undefined) params.set("type", config.type);
+    if (config.limit !== undefined) params.set("limit", config.limit.toString());
+    if (config.offset !== undefined) params.set("offset", config.offset.toString());
+
+    const queryString = params.toString();
+    const requestUrl = queryString
+      ? `${url}/discovery/resources?${queryString}`
+      : `${url}/discovery/resources`;
+
+    const res = await fetch(requestUrl, {
+      method: "GET",
+      headers,
+    });
+
+    if (res.status !== 200) {
+      throw new Error(`Failed to list discovery resources: ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    return data as ListDiscoveryResourcesResponse;
+  }
+
+  return { verify, settle, supported, list };
 }
 
 // Export a default instance
-export const { verify, settle, supported } = useFacilitator();
+export const { verify, settle, supported, list } = useFacilitator();
 
