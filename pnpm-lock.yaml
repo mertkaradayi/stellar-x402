@@ -145,8 +145,8 @@ importers:
   packages/x402-stellar-client:
     dependencies:
       x402-stellar:
-        specifier: workspace:*
-        version: link:../x402-stellar
+        specifier: ^0.1.0
+        version: 0.1.0(@stellar/stellar-sdk@12.3.0)
     devDependencies:
       '@stellar/freighter-api':
         specifier: ^2.0.0
@@ -167,8 +167,8 @@ importers:
   packages/x402-stellar-express:
     dependencies:
       x402-stellar:
-        specifier: workspace:*
-        version: link:../x402-stellar
+        specifier: ^0.1.0
+        version: 0.1.0(@stellar/stellar-sdk@13.3.0)
     devDependencies:
       '@types/express':
         specifier: ^4.17.21
@@ -189,11 +189,11 @@ importers:
   packages/x402-stellar-fetch:
     dependencies:
       x402-stellar:
-        specifier: workspace:*
-        version: link:../x402-stellar
+        specifier: ^0.1.0
+        version: 0.1.0(@stellar/stellar-sdk@12.3.0)
       x402-stellar-client:
-        specifier: workspace:*
-        version: link:../x402-stellar-client
+        specifier: ^0.1.0
+        version: 0.1.0(@stellar/freighter-api@2.0.0)(@stellar/stellar-sdk@12.3.0)
     devDependencies:
       '@stellar/stellar-sdk':
         specifier: ^12.0.0
@@ -2926,6 +2926,20 @@ packages:
   write-file-atomic@5.0.1:
     resolution: {integrity: sha512-+QU2zd6OTD8XWIJCbffaiQeH9U73qIqafo1x6V1snCWYGJf6cVE0cDR4D8xRzcEnfI21IFrUPzPGtcPf8AC+Rw==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
+
+  x402-stellar-client@0.1.0:
+    resolution: {integrity: sha512-nyiyUEbZ6pKgLo2+lSsDUZYsscFoY5wO3iQQoeL1BILjR+RXjZnbByj0CETkoAnBAm2mODmv/yWWeLSem394Xg==}
+    peerDependencies:
+      '@stellar/freighter-api': ^2.0.0
+      '@stellar/stellar-sdk': ^12.0.0
+    peerDependenciesMeta:
+      '@stellar/freighter-api':
+        optional: true
+
+  x402-stellar@0.1.0:
+    resolution: {integrity: sha512-5i2XV0KbOXCy+4dWMmgmmbKsgZnEPsoy3xFshRvKnELeUMxSQ1GHWy/GAgTXdPdaSnV39cqaypvIgn8Z/p6Xcw==}
+    peerDependencies:
+      '@stellar/stellar-sdk': ^12.0.0
 
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
@@ -5903,6 +5917,23 @@ snapshots:
     dependencies:
       imurmurhash: 0.1.4
       signal-exit: 4.1.0
+
+  x402-stellar-client@0.1.0(@stellar/freighter-api@2.0.0)(@stellar/stellar-sdk@12.3.0):
+    dependencies:
+      '@stellar/stellar-sdk': 12.3.0
+      x402-stellar: 0.1.0(@stellar/stellar-sdk@12.3.0)
+    optionalDependencies:
+      '@stellar/freighter-api': 2.0.0
+
+  x402-stellar@0.1.0(@stellar/stellar-sdk@12.3.0):
+    dependencies:
+      '@stellar/stellar-sdk': 12.3.0
+      zod: 3.25.76
+
+  x402-stellar@0.1.0(@stellar/stellar-sdk@13.3.0):
+    dependencies:
+      '@stellar/stellar-sdk': 13.3.0
+      zod: 3.25.76
 
   y18n@5.0.8: {}
 
