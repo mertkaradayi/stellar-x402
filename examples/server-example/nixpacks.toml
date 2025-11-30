@@ -1,0 +1,15 @@
+# Nixpacks configuration for Example Server
+# Railway will use this when root directory is set to examples/server-example
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["cd ../.. && pnpm install"]
+
+[phases.build]
+cmds = ["cd ../.. && pnpm build"]
+
+[start]
+cmd = "npx tsx src/index.ts"
+

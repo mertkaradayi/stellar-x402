@@ -1,0 +1,15 @@
+# Nixpacks configuration for Facilitator Service
+# Railway will use this when root directory is set to packages/facilitator
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["cd ../.. && pnpm install"]
+
+[phases.build]
+cmds = ["cd ../.. && pnpm build"]
+
+[start]
+cmd = "node dist/index.js"
+

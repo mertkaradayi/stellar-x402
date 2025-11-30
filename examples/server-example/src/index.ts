@@ -2,8 +2,14 @@
  * Example Express server protected with x402 payments
  *
  * Run with: pnpm start
+ * 
+ * Environment variables:
+ * - PORT: Server port (default: 3000)
+ * - FACILITATOR_URL: URL of the x402 facilitator (default: http://localhost:4022)
+ * - STELLAR_ADDRESS: Stellar address to receive payments (required for production)
  */
 
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -13,13 +19,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Serve static files (for test pages)
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
-// Stellar address to receive payments
-const PAY_TO = "GC63PSERYMUUUJKYSSFQ7FKRAU5UPIP3XUC6X7DLMZUB7SSCPW5BSIRT";
+// Stellar address to receive payments (from env or default for testing)
+const PAY_TO = process.env.STELLAR_ADDRESS || "GC63PSERYMUUUJKYSSFQ7FKRAU5UPIP3XUC6X7DLMZUB7SSCPW5BSIRT";
+
+// Facilitator URL (from env or default for local development)
+const FACILITATOR_URL = process.env.FACILITATOR_URL || "http://localhost:4022";
 
 // Add x402 payment middleware
 app.use(
@@ -39,14 +48,14 @@ app.use(
     },
     // Point to your facilitator (run locally or use hosted)
     facilitator: {
-      url: "http://localhost:4022",
+      url: FACILITATOR_URL,
     },
     // Use testnet for development
     network: "stellar-testnet",
     // Optional: Enable browser-friendly paywall UI
     paywall: {
       appName: "Example API",
-      debug: true, // Enable debug logging panel
+      debug: process.env.NODE_ENV !== "production", // Disable debug in production
     },
   })
 );
@@ -284,7 +293,7 @@ app.get("/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
   console.log(`💰 Payments go to: ${PAY_TO}`);
-  console.log(`📡 Facilitator: http://localhost:4022`);
+  console.log(`📡 Facilitator: ${FACILITATOR_URL}`);
   console.log("");
   console.log("Protected endpoints:");
   console.log("  GET /api/premium/* - 1 XLM");

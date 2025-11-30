@@ -1,0 +1,13 @@
+# Railway Configuration for Stellar x402 Monorepo
+# This file provides default configuration for the entire project
+# Individual services should set their root directory in Railway dashboard
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+

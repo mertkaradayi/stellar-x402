@@ -1,0 +1,15 @@
+# Nixpacks configuration for Railway deployment
+# This ensures pnpm is used as the package manager
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = ["pnpm build"]
+
+[start]
+cmd = "pnpm start"
+
