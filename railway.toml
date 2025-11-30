@@ -2,18 +2,20 @@
 #
 # IMPORTANT: Both services must use Root Directory: . (repo root)
 #
-# For FACILITATOR service:
-#   Start Command: cd /app/packages/facilitator && node dist/index.js
+# Set Custom Start Command in Railway dashboard for each service:
 #
-# For EXAMPLE SERVER service:
-#   Start Command: cd /app/examples/server-example && npx tsx src/index.ts
+# FACILITATOR service:
+#   cd /app/packages/facilitator && node dist/index.js
+#
+# EXAMPLE SERVER service:
+#   cd /app/examples/server-example && npx tsx src/index.ts
 
 [build]
 builder = "NIXPACKS"
 buildCommand = "pnpm install && pnpm -r build"
 
 [deploy]
-startCommand = "cd /app/packages/facilitator && node dist/index.js"
+# NOTE: startCommand removed - set per-service in Railway dashboard
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
