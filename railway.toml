@@ -1,11 +1,19 @@
 # Railway Configuration for Stellar x402 Monorepo
-# This file provides default configuration for the entire project
-# Individual services should set their root directory in Railway dashboard
+#
+# IMPORTANT: Both services must use Root Directory: . (repo root)
+#
+# For FACILITATOR service:
+#   Start Command: cd /app/packages/facilitator && node dist/index.js
+#
+# For EXAMPLE SERVER service:
+#   Start Command: cd /app/examples/server-example && npx tsx src/index.ts
 
 [build]
 builder = "NIXPACKS"
+buildCommand = "pnpm install && pnpm -r build"
 
 [deploy]
+startCommand = "cd /app/packages/facilitator && node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"

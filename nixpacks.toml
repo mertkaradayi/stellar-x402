@@ -1,5 +1,13 @@
 # Nixpacks configuration for Railway deployment
 # This ensures pnpm is used as the package manager
+#
+# For FACILITATOR service:
+#   Root Directory: . (repo root)
+#   Start Command Override: cd /app/packages/facilitator && node dist/index.js
+#
+# For EXAMPLE SERVER service:
+#   Root Directory: . (repo root) 
+#   Start Command Override: cd /app/examples/server-example && npx tsx src/index.ts
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
@@ -8,8 +16,8 @@ nixPkgs = ["nodejs_20", "pnpm"]
 cmds = ["pnpm install"]
 
 [phases.build]
-cmds = ["pnpm build"]
+cmds = ["pnpm -r build"]
 
 [start]
-cmd = "pnpm start"
+cmd = "cd /app/packages/facilitator && node dist/index.js"
 
