@@ -1,8 +1,27 @@
 {
   "name": "x402-stellar-fetch",
   "version": "0.1.0",
-  "description": "Fetch wrapper that automatically handles x402 payments for Stellar",
+  "description": "Fetch wrapper that automatically handles x402 payments for Stellar - Seamless API monetization",
   "license": "MIT",
+  "author": "Mert Karadayi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mertkaradayi/stellar-x402.git",
+    "directory": "packages/x402-stellar-fetch"
+  },
+  "homepage": "https://github.com/mertkaradayi/stellar-x402#readme",
+  "bugs": {
+    "url": "https://github.com/mertkaradayi/stellar-x402/issues"
+  },
+  "keywords": [
+    "stellar",
+    "x402",
+    "fetch",
+    "http-client",
+    "payments",
+    "xlm",
+    "api"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -24,8 +43,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "x402-stellar": "workspace:*",
-    "x402-stellar-client": "workspace:*"
+    "x402-stellar": "^0.1.0",
+    "x402-stellar-client": "^0.1.0"
   },
   "devDependencies": {
     "@stellar/stellar-sdk": "^12.0.0",
@@ -37,4 +56,3 @@
     "@stellar/stellar-sdk": "^12.0.0"
   }
 }
-

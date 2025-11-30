@@ -1,8 +1,28 @@
 {
   "name": "x402-stellar",
   "version": "0.1.0",
-  "description": "Core library for Stellar x402 payment protocol",
+  "description": "Core library for Stellar x402 payment protocol - Accept payments with 1 line of code",
   "license": "MIT",
+  "author": "Mert Karadayi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mertkaradayi/stellar-x402.git",
+    "directory": "packages/x402-stellar"
+  },
+  "homepage": "https://github.com/mertkaradayi/stellar-x402#readme",
+  "bugs": {
+    "url": "https://github.com/mertkaradayi/stellar-x402/issues"
+  },
+  "keywords": [
+    "stellar",
+    "x402",
+    "payments",
+    "http-402",
+    "xlm",
+    "cryptocurrency",
+    "blockchain",
+    "micropayments"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -48,4 +68,3 @@
     "@stellar/stellar-sdk": "^12.0.0"
   }
 }
-

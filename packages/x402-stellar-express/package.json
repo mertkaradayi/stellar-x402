@@ -1,8 +1,28 @@
 {
   "name": "x402-stellar-express",
   "version": "0.1.0",
-  "description": "Express middleware for x402 payments on Stellar",
+  "description": "Express middleware for x402 payments on Stellar - Accept XLM payments with 1 line of code",
   "license": "MIT",
+  "author": "Mert Karadayi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mertkaradayi/stellar-x402.git",
+    "directory": "packages/x402-stellar-express"
+  },
+  "homepage": "https://github.com/mertkaradayi/stellar-x402#readme",
+  "bugs": {
+    "url": "https://github.com/mertkaradayi/stellar-x402/issues"
+  },
+  "keywords": [
+    "stellar",
+    "x402",
+    "express",
+    "middleware",
+    "payments",
+    "http-402",
+    "xlm",
+    "paywall"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -24,7 +44,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "x402-stellar": "workspace:*"
+    "x402-stellar": "^0.1.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

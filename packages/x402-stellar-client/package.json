@@ -1,8 +1,27 @@
 {
   "name": "x402-stellar-client",
   "version": "0.1.0",
-  "description": "Client SDK for signing Stellar x402 payments",
+  "description": "Client SDK for signing Stellar x402 payments - Browser & Node.js support",
   "license": "MIT",
+  "author": "Mert Karadayi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mertkaradayi/stellar-x402.git",
+    "directory": "packages/x402-stellar-client"
+  },
+  "homepage": "https://github.com/mertkaradayi/stellar-x402#readme",
+  "bugs": {
+    "url": "https://github.com/mertkaradayi/stellar-x402/issues"
+  },
+  "keywords": [
+    "stellar",
+    "x402",
+    "client",
+    "freighter",
+    "wallet",
+    "payments",
+    "xlm"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -24,7 +43,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "x402-stellar": "workspace:*"
+    "x402-stellar": "^0.1.0"
   },
   "devDependencies": {
     "@stellar/stellar-sdk": "^12.0.0",
@@ -43,4 +62,3 @@
     }
   }
 }
-
