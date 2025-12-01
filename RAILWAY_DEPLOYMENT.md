@@ -51,7 +51,7 @@ Or create via Railway dashboard at https://railway.app/new
 
    **For your Redis Cloud instance:**
    ```
-   REDIS_URL=redis://admin:2186918Mert.k@redis-14797.crce198.eu-central-1-3.ec2.cloud.redislabs.com:14797
+   REDIS_URL=redis://exampleUser:examplePass123@redis-00000.example-region.cloud.redislabs.com:12345
    ```
 
 4. **Optional - Fee Sponsorship:**
