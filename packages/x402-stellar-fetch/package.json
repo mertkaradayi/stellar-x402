@@ -1,6 +1,6 @@
 {
   "name": "x402-stellar-fetch",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fetch wrapper that automatically handles x402 payments for Stellar - Seamless API monetization",
   "license": "MIT",
   "author": "Mert Karadayi",

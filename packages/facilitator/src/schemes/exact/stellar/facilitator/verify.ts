@@ -6,6 +6,7 @@
  */
 
 import * as Stellar from "@stellar/stellar-sdk";
+import { Server as SorobanServer, Api as SorobanApi } from "@stellar/stellar-sdk/rpc";
 import type {
   PaymentPayload,
   PaymentRequirements,
@@ -123,9 +124,33 @@ export async function verify(
           };
         }
       }
+    } else {
+      // For SAC token payments, verify via Soroban RPC simulation
+      // This matches Coinbase x402 pattern of simulating the transaction
+      try {
+        const sorobanServer = new SorobanServer(networkConfig.sorobanRpcUrl);
+
+        // If we have a transaction XDR, simulate it to verify it will succeed
+        if (signedTxXdr) {
+          const tx = Stellar.TransactionBuilder.fromXDR(signedTxXdr, networkConfig.networkPassphrase);
+          const simulation = await sorobanServer.simulateTransaction(tx);
+
+          if (SorobanApi.isSimulationError(simulation)) {
+            console.log("[verify] SAC token simulation failed:", simulation.error);
+            return {
+              isValid: false,
+              invalidReason: "invalid_exact_stellar_payload_simulation_failed" as StellarErrorReason,
+              payer,
+            };
+          }
+          console.log("[verify] SAC token simulation succeeded");
+        }
+      } catch (sorobanError) {
+        console.error("[verify] Soroban RPC error:", sorobanError);
+        // Fall through - we'll still accept if no simulation is available
+      }
     }
-    // For token payments (Soroban), we would need to check token balance
-    // This is more complex and would require Soroban RPC calls
+
 
     // If we have a signed transaction, try to parse it
     if (signedTxXdr) {

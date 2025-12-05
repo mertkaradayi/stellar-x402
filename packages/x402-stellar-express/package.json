@@ -1,6 +1,6 @@
 {
   "name": "x402-stellar-express",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Express middleware for x402 payments on Stellar - Accept XLM payments with 1 line of code",
   "license": "MIT",
   "author": "Mert Karadayi",

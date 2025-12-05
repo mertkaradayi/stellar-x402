@@ -30,20 +30,33 @@ const PAY_TO = process.env.STELLAR_ADDRESS || "GC63PSERYMUUUJKYSSFQ7FKRAU5UPIP3X
 // Facilitator URL (from env or default for local development)
 const FACILITATOR_URL = process.env.FACILITATOR_URL || "http://localhost:4022";
 
+// USDC contract address on Stellar testnet
+const USDC_CONTRACT = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+
 // Add x402 payment middleware
 app.use(
   paymentMiddleware({
     payTo: PAY_TO,
     routes: {
-      // Protect /api/premium/* routes - costs 1 XLM
+      // XLM routes - Native XLM payment
       "/api/premium/*": {
         price: "1.00",
-        description: "Premium API access",
+        description: "Premium API access (XLM)",
       },
-      // Protect /api/data route - costs 0.5 XLM
       "/api/data": {
         price: "0.50",
-        description: "Access to data endpoint",
+        description: "Data endpoint (XLM)",
+      },
+      // USDC routes - SAC token payment (testnet USDC)
+      "/api/usdc/premium/*": {
+        price: "1000000", // 0.1 USDC (7 decimals)
+        asset: USDC_CONTRACT,
+        description: "Premium API access (USDC)",
+      },
+      "/api/usdc/data": {
+        price: "500000", // 0.05 USDC
+        asset: USDC_CONTRACT,
+        description: "Data endpoint (USDC)",
       },
     },
     // Point to your facilitator (run locally or use hosted)
@@ -60,10 +73,10 @@ app.use(
   })
 );
 
-// Protected routes
+// Protected routes - XLM
 app.get("/api/premium/content", (req, res) => {
   res.json({
-    message: "🎉 You paid for premium content!",
+    message: "🎉 You paid for premium content with XLM!",
     data: {
       secret: "This is premium data",
       timestamp: new Date().toISOString(),
@@ -73,7 +86,7 @@ app.get("/api/premium/content", (req, res) => {
 
 app.get("/api/premium/stats", (req, res) => {
   res.json({
-    message: "Premium statistics",
+    message: "Premium statistics (XLM)",
     stats: {
       users: 1234,
       revenue: 5678,
@@ -83,10 +96,29 @@ app.get("/api/premium/stats", (req, res) => {
 
 app.get("/api/data", (req, res) => {
   res.json({
-    message: "You paid for data access!",
+    message: "You paid for data access with XLM!",
     data: [1, 2, 3, 4, 5],
   });
 });
+
+// Protected routes - USDC (SAC token)
+app.get("/api/usdc/premium/content", (req, res) => {
+  res.json({
+    message: "🎉 You paid for premium content with USDC!",
+    data: {
+      secret: "This is premium data (paid in USDC)",
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+app.get("/api/usdc/data", (req, res) => {
+  res.json({
+    message: "You paid for data access with USDC!",
+    data: [1, 2, 3, 4, 5],
+  });
+});
+
 
 // Free routes (no payment required)
 app.get("/", (req, res) => {
@@ -260,6 +292,18 @@ app.get("/", (req, res) => {
       </div>
     </div>
 
+    <div class="endpoints">
+      <h2>USDC Payments</h2>
+      <div class="endpoint">
+        <a href="/api/usdc/premium/content">[ Premium Content (USDC) ]</a>
+        <span class="price">0.1 USDC</span>
+      </div>
+      <div class="endpoint">
+        <a href="/api/usdc/data">[ Data API (USDC) ]</a>
+        <span class="price">0.05 USDC</span>
+      </div>
+    </div>
+
     <div class="note">
       <strong>>> System Instructions</strong>
       1. Select a restricted endpoint above<br>
@@ -276,10 +320,14 @@ app.get("/", (req, res) => {
       message: "Welcome to the x402 example server!",
       endpoints: {
         free: ["GET /", "GET /health"],
-        paid: [
+        xlm: [
           "GET /api/premium/content (1 XLM)",
           "GET /api/premium/stats (1 XLM)",
           "GET /api/data (0.5 XLM)",
+        ],
+        usdc: [
+          "GET /api/usdc/premium/content (0.1 USDC)",
+          "GET /api/usdc/data (0.05 USDC)",
         ],
       },
     });

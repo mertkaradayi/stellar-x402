@@ -3,6 +3,7 @@
  *
  * Generates a server-rendered HTML page for the Stellar paywall.
  * Uses the Freighter wallet extension for signing transactions.
+ * Supports both XLM native payments and SAC token payments (USDC via Soroban).
  */
 
 import type { PaymentRequirements } from "x402-stellar";
@@ -12,6 +13,44 @@ import { formatStroopsToXLM, getNetworkDisplayName, isTestnetNetwork } from "./p
 
 // Re-export PaywallConfig for convenience
 export type { PaywallConfig };
+
+// Well-known token symbols by contract address (used server-side and serialized to client)
+const TOKEN_CATALOG: Record<string, { symbol: string; decimals: number }> = {
+  // Testnet USDC
+  "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA": { symbol: "USDC", decimals: 7 },
+  // Mainnet USDC
+  "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": { symbol: "USDC", decimals: 7 },
+};
+
+/**
+ * Get human-readable asset display (XLM or token symbol)
+ */
+function getAssetDisplay(asset: string): string {
+  if (asset === "native") return "XLM";
+  const token = TOKEN_CATALOG[asset];
+  return token ? token.symbol : asset.slice(0, 8) + "...";
+}
+
+/**
+ * Format amount for display based on asset type
+ * For native XLM: amount is in stroops (7 decimals)
+ * For SAC tokens: amount uses token's decimals from TOKEN_CATALOG
+ */
+function formatAmount(amount: string, asset: string): string {
+  if (asset === "native") {
+    return formatStroopsToXLM(amount);
+  }
+  // SAC token amount formatting
+  const token = TOKEN_CATALOG[asset];
+  const decimals = token?.decimals ?? 7;
+  const raw = BigInt(amount);
+  const divisor = BigInt(10 ** decimals);
+  const whole = raw / divisor;
+  const frac = raw % divisor;
+  // Pad fractional part and remove trailing zeros for clean display
+  const fracStr = frac.toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fracStr ? `${whole}.${fracStr}` : whole.toString();
+}
 
 export interface GetPaywallHtmlOptions {
   /** Payment requirements from the 402 response */
@@ -28,9 +67,8 @@ export interface GetPaywallHtmlOptions {
 export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
   const { paymentRequirements, currentUrl, config } = options;
 
-  const amount = formatStroopsToXLM(paymentRequirements.maxAmountRequired);
-  const assetDisplay =
-    paymentRequirements.asset === "native" ? "XLM" : paymentRequirements.asset.slice(0, 8) + "...";
+  const assetDisplay = getAssetDisplay(paymentRequirements.asset);
+  const amount = formatAmount(paymentRequirements.maxAmountRequired, paymentRequirements.asset);
   const networkDisplay = getNetworkDisplayName(paymentRequirements.network);
   const isTestnet = isTestnetNetwork(paymentRequirements.network);
   const appName = config?.appName || "Protected Content";
@@ -46,6 +84,12 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
   const horizonUrl = isTestnet
     ? "https://horizon-testnet.stellar.org"
     : "https://horizon.stellar.org";
+  const sorobanRpcUrl = isTestnet
+    ? "https://soroban-testnet.stellar.org"
+    : "https://soroban.stellar.org";
+
+  // Check if this is a SAC token payment
+  const isSacToken = paymentRequirements.asset !== "native";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -126,10 +170,15 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
     const currentUrl = ${JSON.stringify(currentUrl)};
     const networkPassphrase = ${JSON.stringify(networkPassphrase)};
     const horizonUrl = ${JSON.stringify(horizonUrl)};
+    const sorobanRpcUrl = ${JSON.stringify(sorobanRpcUrl)};
     const debugMode = ${JSON.stringify(debugMode)};
     const appName = ${JSON.stringify(appName)};
     const appLogo = ${config?.appLogo ? JSON.stringify(config.appLogo) : 'null'};
     const stellarLogoSvg = ${JSON.stringify(stellarLogoSvg)};
+    const tokenCatalog = ${JSON.stringify(TOKEN_CATALOG)};
+    const isSacToken = ${JSON.stringify(isSacToken)};
+    const formattedAmount = ${JSON.stringify(amount)};
+    const assetSymbol = ${JSON.stringify(assetDisplay)};
 
     // DOM elements
     const connectBtn = document.getElementById('connectBtn');
@@ -304,11 +353,12 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
       }
     }
 
-    // Make payment
+    // Make payment (handles both XLM and SAC tokens like USDC)
     async function makePayment() {
       payBtn.disabled = true;
       payBtnText.innerHTML = '<span class="spinner"></span> Processing...';
       log('Starting payment...');
+      log('Asset type: ' + (isSacToken ? 'SAC Token (' + assetSymbol + ')' : 'Native XLM'));
 
       try {
         showStatus('Building transaction...', 'loading');
@@ -318,34 +368,34 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
         const StellarSdk = sdkModule.default || sdkModule;
         log('Stellar SDK loaded');
 
-        // Load source account
+        // Load source account via Horizon
         let server;
         if (StellarSdk.Horizon && StellarSdk.Horizon.Server) {
           server = new StellarSdk.Horizon.Server(horizonUrl);
         } else if (StellarSdk.Server) {
           server = new StellarSdk.Server(horizonUrl);
         } else {
-          log('SDK Keys: ' + Object.keys(StellarSdk).join(', '));
-          if (StellarSdk.Horizon) log('Horizon Keys: ' + Object.keys(StellarSdk.Horizon).join(', '));
           throw new Error('Could not find Horizon Server in Stellar SDK');
         }
 
         const sourceAccount = await server.loadAccount(publicKey);
         log('Account loaded: sequence ' + sourceAccount.sequence);
 
-        // Calculate amount in XLM (7 decimals)
-        const stroops = BigInt(paymentRequirements.maxAmountRequired);
-        const xlmAmount = (Number(stroops) / 10000000).toFixed(7);
-        log('Payment amount: ' + xlmAmount + ' XLM');
+        const timeout = paymentRequirements.maxTimeoutSeconds || 300;
+        let signedTxXdr;
+        let validUntilLedger;
 
-        // Build transaction
-        let txBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
-          fee: StellarSdk.BASE_FEE,
-          networkPassphrase: networkPassphrase,
-        });
+        if (!isSacToken) {
+          // ===== Native XLM Payment =====
+          const stroops = BigInt(paymentRequirements.maxAmountRequired);
+          const xlmAmount = (Number(stroops) / 10000000).toFixed(7);
+          log('Payment amount: ' + xlmAmount + ' XLM');
 
-        // Add payment operation
-        if (paymentRequirements.asset === 'native') {
+          let txBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: StellarSdk.BASE_FEE,
+            networkPassphrase: networkPassphrase,
+          });
+
           txBuilder = txBuilder.addOperation(
             StellarSdk.Operation.payment({
               destination: paymentRequirements.payTo,
@@ -353,49 +403,159 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
               amount: xlmAmount,
             })
           );
+
+          txBuilder = txBuilder.setTimeout(timeout);
+          const tx = txBuilder.build();
+          log('XLM transaction built');
+
+          // Sign with Freighter
+          showStatus('Please sign the transaction in Freighter...', 'loading');
+          const api = await loadFreighterApi();
+          
+          log('Requesting signature...');
+          const signResult = await api.signTransaction(tx.toXDR(), {
+            networkPassphrase: networkPassphrase,
+          });
+
+          if (signResult.error) {
+            throw new Error('Signing failed: ' + signResult.error);
+          }
+
+          signedTxXdr = signResult.signedTxXdr || signResult;
+          if (!signedTxXdr || typeof signedTxXdr !== 'string') {
+            throw new Error('No signed transaction returned from Freighter');
+          }
+          log('Transaction signed');
+
+          // Get current ledger for validUntilLedger
+          const ledgerResponse = await server.ledgers().order('desc').limit(1).call();
+          validUntilLedger = ledgerResponse.records[0].sequence + Math.ceil(timeout / 5);
+
         } else {
-          throw new Error('Custom token payments not yet supported');
+          // ===== SAC Token Payment (USDC, etc.) via Soroban =====
+          log('Building SAC token transfer via Soroban...');
+          showStatus('Building Soroban contract call...', 'loading');
+
+          // Connect to Soroban RPC
+          let sorobanServer;
+          if (StellarSdk.rpc && StellarSdk.rpc.Server) {
+            sorobanServer = new StellarSdk.rpc.Server(sorobanRpcUrl);
+          } else if (StellarSdk.SorobanRpc && StellarSdk.SorobanRpc.Server) {
+            sorobanServer = new StellarSdk.SorobanRpc.Server(sorobanRpcUrl);
+          } else {
+            throw new Error('Soroban RPC not available in Stellar SDK');
+          }
+
+          // Build SEP-41 transfer: transfer(from, to, amount)
+          const contractAddress = paymentRequirements.asset;
+          const rawAmount = paymentRequirements.maxAmountRequired;
+
+          log('Contract: ' + contractAddress);
+          log('From: ' + publicKey);
+          log('To: ' + paymentRequirements.payTo);
+          log('Amount (raw): ' + rawAmount);
+
+          // Helper to create ScVal for address
+          function addressToScVal(address) {
+            return StellarSdk.nativeToScVal(address, { type: 'address' });
+          }
+
+          // Helper to create ScVal for i128 amount using explicit XDR construction
+          // This avoids any auto-conversion that nativeToScVal might apply
+          function amountToI128ScVal(amountStr) {
+            const amt = BigInt(amountStr);
+            log('Converting amount to i128: ' + amt.toString());
+            
+            // i128 is stored as two 64-bit parts: lo (unsigned) and hi (signed)
+            const maxU64 = BigInt('0xFFFFFFFFFFFFFFFF');
+            const lo = amt & maxU64;
+            const hi = amt >> BigInt(64);
+            
+            log('i128 lo: ' + lo.toString() + ', hi: ' + hi.toString());
+            
+            // Use XDR directly to construct the i128 ScVal
+            return StellarSdk.xdr.ScVal.scvI128(
+              new StellarSdk.xdr.Int128Parts({
+                lo: StellarSdk.xdr.Uint64.fromString(lo.toString()),
+                hi: StellarSdk.xdr.Int64.fromString(hi.toString())
+              })
+            );
+          }
+
+          // Build the contract invocation
+          const contract = new StellarSdk.Contract(contractAddress);
+          const transferOp = contract.call(
+            'transfer',
+            addressToScVal(publicKey),           // from
+            addressToScVal(paymentRequirements.payTo), // to
+            amountToI128ScVal(rawAmount)         // amount (explicit i128)
+          );
+
+          // Build transaction with the contract call
+          let txBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: '100000', // Higher fee for Soroban
+            networkPassphrase: networkPassphrase,
+          })
+            .addOperation(transferOp)
+            .setTimeout(timeout);
+
+          const builtTx = txBuilder.build();
+          log('Initial transaction built, simulating...');
+
+          // Simulate to get footprint and auth
+          showStatus('Simulating transaction...', 'loading');
+          const simulation = await sorobanServer.simulateTransaction(builtTx);
+
+          if (StellarSdk.rpc && StellarSdk.rpc.Api && StellarSdk.rpc.Api.isSimulationError && StellarSdk.rpc.Api.isSimulationError(simulation)) {
+            throw new Error('Simulation failed: ' + (simulation.error || 'Unknown error'));
+          }
+          if (simulation.error) {
+            throw new Error('Simulation failed: ' + simulation.error);
+          }
+
+          log('Simulation successful');
+
+          // Prepare the transaction with simulation results
+          let preparedTx;
+          if (StellarSdk.rpc && StellarSdk.rpc.assembleTransaction) {
+            preparedTx = StellarSdk.rpc.assembleTransaction(builtTx, simulation).build();
+          } else if (StellarSdk.SorobanRpc && StellarSdk.SorobanRpc.assembleTransaction) {
+            preparedTx = StellarSdk.SorobanRpc.assembleTransaction(builtTx, simulation).build();
+          } else if (sorobanServer.prepareTransaction) {
+            preparedTx = await sorobanServer.prepareTransaction(builtTx);
+          } else {
+            throw new Error('Could not find assembleTransaction in SDK');
+          }
+          
+          log('Transaction prepared with footprint and auth');
+
+          // Sign with Freighter
+          showStatus('Please sign the transaction in Freighter...', 'loading');
+          const api = await loadFreighterApi();
+
+          log('Requesting signature for Soroban transaction...');
+          const signResult = await api.signTransaction(preparedTx.toXDR(), {
+            networkPassphrase: networkPassphrase,
+          });
+
+          if (signResult.error) {
+            throw new Error('Signing failed: ' + signResult.error);
+          }
+
+          signedTxXdr = signResult.signedTxXdr || signResult;
+          if (!signedTxXdr || typeof signedTxXdr !== 'string') {
+            throw new Error('No signed transaction returned from Freighter');
+          }
+          log('Soroban transaction signed');
+
+          // Get current ledger for validUntilLedger
+          const ledgerResponse = await server.ledgers().order('desc').limit(1).call();
+          validUntilLedger = ledgerResponse.records[0].sequence + Math.ceil(timeout / 5);
         }
 
-        // Set timeout and build
-        const timeout = paymentRequirements.maxTimeoutSeconds || 300;
-        txBuilder = txBuilder.setTimeout(timeout);
-        const tx = txBuilder.build();
-        log('Transaction built');
-
-        // Sign with Freighter
-        showStatus('Please sign the transaction in Freighter...', 'loading');
-
-        const api = await loadFreighterApi();
-        if (!api) {
-          throw new Error('Freighter wallet not available');
-        }
-
-        log('Requesting signature...');
-        const signResult = await api.signTransaction(tx.toXDR(), {
-          networkPassphrase: networkPassphrase,
-        });
-        log('Sign result received: ' + JSON.stringify(signResult));
-
-        if (signResult.error) {
-          throw new Error('Signing failed: ' + signResult.error);
-        }
-
-        // signTransaction returns { signedTxXdr } or just the signed XDR string
-        const signedTxXdr = signResult.signedTxXdr || signResult;
-        if (!signedTxXdr || typeof signedTxXdr !== 'string') {
-          throw new Error('No signed transaction returned from Freighter');
-        }
-
-        log('Transaction signed');
         showStatus('Submitting payment...', 'loading');
 
-        // Get current ledger for validUntilLedger
-        const ledgerResponse = await server.ledgers().order('desc').limit(1).call();
-        const currentLedger = ledgerResponse.records[0].sequence;
-        const validUntilLedger = currentLedger + Math.ceil(timeout / 5);
-
-        // Build payment payload
+        // Build payment payload for x402
         const paymentPayload = {
           x402Version: 1,
           scheme: 'exact',
@@ -484,7 +644,7 @@ export function getPaywallHtml(options: GetPaywallHtmlOptions): string {
         log('Payment error: ' + error.message);
         showStatus(error.message || 'Payment failed', 'error');
         payBtn.disabled = false;
-        payBtnText.textContent = 'Pay ${amount} ${assetDisplay}';
+        payBtnText.textContent = 'Pay ' + formattedAmount + ' ' + assetSymbol;
       }
     }
 

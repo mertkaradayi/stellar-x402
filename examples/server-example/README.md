@@ -1,6 +1,6 @@
 # Stellar x402 Example Server
 
-A simple, runnable example server that demonstrates Stellar x402 payments.
+A simple, runnable example server that demonstrates Stellar x402 payments with both XLM and USDC.
 
 ## Quick Start
 
@@ -46,30 +46,67 @@ All payments go to: `GC63PSERYMUUUJKYSSFQ7FKRAU5UPIP3XUC6X7DLMZUB7SSCPW5BSIRT`
 - `GET /` - Home page (HTML or JSON)
 - `GET /health` - Health check
 
-### Protected Endpoints (Require Payment)
+### XLM Protected Endpoints (Native XLM Payment)
 - `GET /api/premium/content` - Premium content (1 XLM)
 - `GET /api/premium/stats` - Premium statistics (1 XLM)
 - `GET /api/data` - Data API (0.5 XLM)
 
+### USDC Protected Endpoints (SAC Token Payment)
+- `GET /api/usdc/premium/content` - Premium content (0.1 USDC)
+- `GET /api/usdc/data` - Data API (0.05 USDC)
+
+## Asset Configuration
+
+This example uses:
+- **Native XLM** for `/api/*` routes
+- **USDC (Testnet)** for `/api/usdc/*` routes
+
+USDC Testnet Contract: `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
+
 ## Testing
 
-### Browser Testing (Recommended)
+### Browser Testing (Freighter Wallet)
 
-1. Make sure Freighter wallet is installed and connected to Stellar Testnet
+The browser paywall supports both **XLM** and **USDC** payments via Freighter:
+
+1. Make sure [Freighter wallet](https://freighter.app) is installed and connected to Stellar Testnet
 2. Visit `http://localhost:3000` in your browser
-3. Click any protected endpoint
-4. The paywall UI will appear
-5. Connect Freighter and pay
+3. Click any protected endpoint:
+   - XLM: `/api/data` or `/api/premium/content`
+   - USDC: `/api/usdc/data` or `/api/usdc/premium/content`
+4. The paywall UI will appear showing the price (e.g., "0.05 USDC")
+5. Connect Freighter and approve the payment
 6. You'll see the protected content!
 
-### Programmatic Testing
+**USDC Browser Flow:**
+The browser paywall builds a Soroban contract call (SEP-41 `transfer`), simulates it via Soroban RPC, and signs with Freighter. The facilitator then submits the transaction.
 
-Use the client example:
+### Programmatic Testing (SDK)
+
+Use the `x402-stellar-client` SDK for server-to-server or automated payments:
 
 ```bash
 cd ../client-example
 STELLAR_SECRET_KEY=YOUR_SECRET_KEY pnpm start
 ```
+
+**When to use the SDK vs Browser:**
+
+| Use Case | Recommended Approach |
+|----------|---------------------|
+| Web app with user interaction | Browser paywall + Freighter |
+| Backend service / automation | `x402-stellar-client` SDK |
+| Testing without wallet | SDK with keypair signer |
+| MCP / Agent payments | SDK with keypair signer |
+
+## Getting Testnet Tokens
+
+**XLM:** Fund your wallet via Friendbot:
+```bash
+curl "https://friendbot.stellar.org?addr=YOUR_PUBLIC_KEY"
+```
+
+**USDC:** Get testnet USDC from [Circle Faucet](https://faucet.circle.com/) or swap XLM for USDC on a testnet DEX.
 
 ## Troubleshooting
 
@@ -84,5 +121,5 @@ STELLAR_SECRET_KEY=YOUR_SECRET_KEY pnpm start
 
 **Payment fails:**
 - Make sure your Freighter wallet is on Stellar Testnet
-- Ensure you have testnet XLM in your wallet
-- Fund your wallet: `curl "https://friendbot.stellar.org?addr=YOUR_PUBLIC_KEY"`
+- Ensure you have testnet XLM/USDC in your wallet
+

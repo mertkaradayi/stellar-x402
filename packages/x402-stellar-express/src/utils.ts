@@ -5,17 +5,38 @@
 import type { RouteConfig, RoutesConfig, RoutePattern, Price } from "./types.js";
 
 /**
- * Parse price to stroops (atomic units)
+ * Parse price to atomic units
  * 
- * @param price - Price as string (e.g., "1.00") or number (stroops)
- * @returns Price in stroops as string
+ * For native XLM: price is in XLM (e.g., "1.00"), converted to stroops
+ * For SAC tokens: price is already in smallest units (e.g., "500000" for 0.05 USDC)
+ * 
+ * @param price - Price as string (XLM) or number (raw units for SAC tokens)
+ * @param asset - Asset type ("native" or contract address)
+ * @returns Price in atomic units as string
  */
-export function priceToStroops(price: Price): string {
+export function priceToAtomicUnits(price: Price, asset: string = "native"): string {
+  // For number inputs, return as-is (already in atomic units)
   if (typeof price === "number") {
     return price.toString();
   }
 
-  // Parse string price (assumed to be in XLM)
+  // For SAC tokens (non-native), the price should already be in atomic units
+  // e.g., "500000" for 0.05 USDC (7 decimals)
+  if (asset !== "native") {
+    // If it looks like a whole number string, return as-is
+    if (/^\d+$/.test(price)) {
+      return price;
+    }
+    // Otherwise, parse as decimal and use 7 decimals (Stellar standard)
+    const parsed = parseFloat(price);
+    if (isNaN(parsed)) {
+      throw new Error(`Invalid price: ${price}`);
+    }
+    const units = BigInt(Math.floor(parsed * 10_000_000));
+    return units.toString();
+  }
+
+  // For native XLM: parse string price and convert to stroops
   const parsed = parseFloat(price);
   if (isNaN(parsed)) {
     throw new Error(`Invalid price: ${price}`);
@@ -24,6 +45,14 @@ export function priceToStroops(price: Price): string {
   // Convert XLM to stroops (1 XLM = 10^7 stroops)
   const stroops = BigInt(Math.floor(parsed * 10_000_000));
   return stroops.toString();
+}
+
+/**
+ * Legacy function - use priceToAtomicUnits instead
+ * @deprecated Use priceToAtomicUnits for proper SAC token support
+ */
+export function priceToStroops(price: Price): string {
+  return priceToAtomicUnits(price, "native");
 }
 
 /**

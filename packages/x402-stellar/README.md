@@ -56,6 +56,21 @@ console.log(testnetConfig.horizonUrl);
 // https://horizon-testnet.stellar.org
 ```
 
+### Token Catalog (USDC)
+
+```typescript
+import { STELLAR_TOKENS, getTokenBySymbol } from "x402-stellar";
+
+// Get USDC contract addresses
+const usdcTestnet = STELLAR_TOKENS["stellar-testnet"].USDC;
+console.log(usdcTestnet.address);
+// CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
+
+const usdcMainnet = getTokenBySymbol("stellar", "USDC");
+console.log(usdcMainnet?.address);
+// CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
+```
+
 ## Exports
 
 - `x402-stellar` - Main entry point with all exports

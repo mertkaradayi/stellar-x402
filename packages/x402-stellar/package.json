@@ -1,6 +1,6 @@
 {
   "name": "x402-stellar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Core library for Stellar x402 payment protocol - Accept payments with 1 line of code",
   "license": "MIT",
   "author": "Mert Karadayi",

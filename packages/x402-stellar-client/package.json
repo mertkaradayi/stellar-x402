@@ -1,6 +1,6 @@
 {
   "name": "x402-stellar-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Client SDK for signing Stellar x402 payments - Browser & Node.js support",
   "license": "MIT",
   "author": "Mert Karadayi",

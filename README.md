@@ -34,7 +34,7 @@ This implementation brings x402 to the **Stellar network**, offering unique adva
 - **XDR transaction format** - Uses Stellar's native XDR (eXternal Data Representation) for transactions
 - **Built-in replay protection** - Stellar's sequence numbers prevent transaction replay at protocol level
 - **Native XLM support** - Direct XLM payments without token contracts
-- **Soroban token support** - Ready for Stellar Asset Contracts (SAC) when needed
+- **USDC support** - Pay with USDC via Stellar Asset Contracts (SAC) on testnet and mainnet
 
 ### 🌐 **Browser-First Experience**
 - **Freighter wallet integration** - Seamless browser payments with the most popular Stellar wallet
@@ -313,6 +313,8 @@ Install the Express middleware:
 npm install x402-stellar-express express
 ```
 
+**Accept XLM payments:**
+
 ```typescript
 import express from "express";
 import { paymentMiddleware } from "x402-stellar-express";
@@ -336,6 +338,29 @@ app.get("/api/premium/data", (req, res) => {
 
 app.listen(3000);
 ```
+
+**Accept USDC payments:**
+
+```typescript
+// USDC contract addresses
+const USDC_TESTNET = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+const USDC_MAINNET = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+
+app.use(paymentMiddleware({
+  payTo: "GXXXX...",  // Must have USDC trustline!
+  routes: {
+    "/api/premium/*": {
+      price: "1000000",  // 0.1 USDC (7 decimals)
+      asset: USDC_TESTNET,
+      description: "Premium API access (USDC)"
+    }
+  },
+  facilitator: { url: "http://localhost:4022" },
+  network: "stellar-testnet",
+}));
+```
+
+> **Important:** Your receiving address (`payTo`) must have a USDC trustline set up before accepting USDC payments.
 
 ## Architecture
 
@@ -473,12 +498,36 @@ See [packages/facilitator/X402_COMPLIANCE_STATUS.md](./packages/facilitator/X402
 - **Fetch wrapper** - Automatic payment handling
 - **Discovery API** - Resource registration and discovery
 
-## Network Support
+## Network & Asset Support
 
-Currently supported networks:
+### Networks
 
-- ✅ **Stellar Testnet** (`stellar-testnet`)
-- 🚧 **Stellar Mainnet** (`stellar-mainnet`) - Coming soon
+| Network | ID | Status |
+|---------|-----|--------|
+| Stellar Testnet | `stellar-testnet` | ✅ Supported |
+| Stellar Mainnet | `stellar` | ✅ Supported |
+
+### Supported Assets
+
+| Asset | Testnet Contract | Mainnet Contract |
+|-------|------------------|------------------|
+| **XLM** | `native` | `native` |
+| **USDC** | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75` |
+
+### Setting Up USDC Trustline
+
+Before accepting USDC payments, your receiving address must have a USDC trustline:
+
+```bash
+# Using Stellar CLI
+stellar tx new change-trust \
+    --line USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5 \
+    --source-account YOUR_ADDRESS \
+    --network testnet \
+    --sign-with-key YOUR_SECRET_KEY
+```
+
+Or use [Stellar Laboratory](https://laboratory.stellar.org/#txbuilder) to add a trustline via the web UI.
 
 ## Roadmap
 

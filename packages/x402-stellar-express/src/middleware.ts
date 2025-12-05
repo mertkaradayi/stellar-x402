@@ -15,7 +15,7 @@ import {
   StellarAddressRegex,
 } from "x402-stellar";
 import type { PaymentMiddlewareConfig, RoutesConfig } from "./types.js";
-import { compileRoutePatterns, findMatchingRoute, priceToStroops } from "./utils.js";
+import { compileRoutePatterns, findMatchingRoute, priceToAtomicUnits } from "./utils.js";
 import { getPaywallHtml } from "./paywall/index.js";
 
 /**
@@ -94,17 +94,20 @@ export function paymentMiddleware(config: PaymentMiddlewareConfig): RequestHandl
 
     console.log(`[x402-middleware] 🔒 Protected route matched: ${req.method} ${req.path}`);
 
+    // Determine the asset for this route
+    const routeAsset = routeConfig.asset || asset;
+
     // Build payment requirements
     const paymentRequirements: PaymentRequirements = {
       scheme: "exact",
       network,
-      maxAmountRequired: priceToStroops(routeConfig.price),
+      maxAmountRequired: priceToAtomicUnits(routeConfig.price, routeAsset),
       resource: `${req.protocol}://${req.get("host")}${req.path}`,
       description: routeConfig.description || `Payment for ${req.path}`,
       mimeType: routeConfig.mimeType || "application/json",
       payTo,
       maxTimeoutSeconds: routeConfig.maxTimeoutSeconds || 300,
-      asset: routeConfig.asset || asset,
+      asset: routeAsset,
     };
 
     console.log(`[x402-middleware] 💰 Payment requirements:`, {

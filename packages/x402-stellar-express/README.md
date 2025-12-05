@@ -69,6 +69,33 @@ app.use(
 );
 ```
 
+### USDC Payments
+
+Accept USDC payments using Stellar Asset Contracts (SAC):
+
+```typescript
+// USDC contract addresses
+const USDC_TESTNET = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+const USDC_MAINNET = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+
+app.use(
+  paymentMiddleware({
+    payTo: "GXXXX...", // Must have USDC trustline!
+    routes: {
+      "/api/premium/*": {
+        price: "1000000", // 0.1 USDC (7 decimals)
+        asset: USDC_TESTNET,
+        description: "Premium API access (USDC)",
+      },
+    },
+    facilitator: { url: "http://localhost:4022" },
+    network: "stellar-testnet",
+  })
+);
+```
+
+> **Important:** Your receiving address must have a USDC trustline set up before accepting USDC payments.
+
 ### Full Configuration
 
 ```typescript
@@ -81,7 +108,7 @@ app.use(
     routes: {
       "/api/premium/*": {
         price: "1.00", // Amount in XLM (or stroops as number)
-        asset: "native", // "native" for XLM or SAC address
+        asset: "native", // "native" for XLM or SAC contract address
         description: "Premium API access",
         mimeType: "application/json",
         maxTimeoutSeconds: 300,
